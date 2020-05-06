@@ -1,7 +1,7 @@
 # Billing-Data-Loader
 Serverless Function to load Yandex.Cloud billing data to ClickHouse
 
-#Prerequisites
+# Prerequisites
 Ask Yandex.Cloud support to export your billing data to S3 bucket of your choice
 
 Also you need to have Service Account and access keys to access Object Storage (previously mentioned bucket). It could be created using web console or with yc (don't forget to write down your access key and secret key):
@@ -48,6 +48,7 @@ Used environment variables (inside deploy.sh):
     
 ## Create Timer
 
-After deploying your function you can create trigger with timer for it:
+After deploying your function you can create trigger with timer:
 https://cloud.yandex.ru/docs/functions/quickstart/timer-quickstart
+
 For cron expression you can use this template (Trigger runs every 1 hour): 0 * ? * * *    
