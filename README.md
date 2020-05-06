@@ -7,12 +7,6 @@ Ask Yandex.Cloud support to export your billing data to S3 bucket of your choice
 Also you need to have Service Account and access keys to access Object Storage (previously mentioned bucket). It could be created using web console or with yc (don't forget to write down your access key and secret key):
 
 
-## Build package
-
-Small function which imports YA.Cloud billing Data
-to ClickHouse database.
-
-
 ## Create ClickHouse database
 
 Before we start deploying, we need to create ClickHouse database
