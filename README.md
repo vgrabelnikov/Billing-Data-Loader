@@ -41,7 +41,8 @@ Used environment variables (inside deploy.sh):
     {"statusCode": 200, "body": "2 objects loaded", "isBase64Encoded": false}
 
 ## Behaviour
-During first run functions create table `CH_TABLE` in ClickHouse and loads all data from CSV files.
+During first run functions creates table `CH_TABLE` in ClickHouse and loads all data from CSV files.
+
 After first run function calculates maximum date in `CH_TABLE`,
  subtracts 2 days and loads all csv files which are greater or equal than that date.
     
