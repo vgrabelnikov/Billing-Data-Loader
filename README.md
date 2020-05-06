@@ -23,7 +23,7 @@ and obtain it's connection parameters. Easiest way is to use web-console.
 
     $ yc managed-clickhouse cluster create  --name billingserver --environment=production  \
     --network-name vsgrabnet --clickhouse-resource-preset s2.micro \
-    --host type=clickhouse,zone-id=ru-central1-c,subnet-id=YYYYYY \
+    --host type=clickhouse,zone-id=ru-central1-c,,assign-public-ip=true,subnet-id=YYYYYY \
     --clickhouse-disk-size 20 --clickhouse-disk-type network-ssd \
     --user name=user1,password=XXXX --database name=db1
 
