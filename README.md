@@ -16,16 +16,16 @@ Also you need to have Service Account and access keys to access Object Storage (
 Before we start deploying, we need to create ClickHouse database
 and obtain it's connection parameters. Easiest way is to use web-console.
 
-**Don't forget**:
-* make your database available using public IP address;
-* use strong passwords.
-
-
     $ yc managed-clickhouse cluster create  --name billingserver --environment=production  \
     --network-name vsgrabnet --clickhouse-resource-preset s2.micro \
-    --host type=clickhouse,zone-id=ru-central1-c,,assign-public-ip=true,subnet-id=YYYYYY \
+    --host type=clickhouse,zone-id=ru-central1-c,assign-public-ip=true,subnet-id=YYYYYY \
     --clickhouse-disk-size 20 --clickhouse-disk-type network-ssd \
     --user name=user1,password=XXXX --database name=db1
+
+**Don't forget**:
+* make your database available using public IP address if you are using web-console (assign-public-ip=true flag in CLI)
+* use strong passwords.
+
 
 ## Deploy function
 
