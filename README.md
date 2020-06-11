@@ -4,6 +4,8 @@ Serverless Function to load Yandex.Cloud billing data to ClickHouse
 # Prerequisites
 Ask Yandex.Cloud support to export your billing data to S3 bucket of your choice
 
+https://cloud.yandex.ru/docs/billing-folder-report/get-folder-report
+
 Also you need to have Service Account and access keys to access Object Storage (previously mentioned bucket). It could be created using web console or with yc (don't forget to write down your access key and secret key):
 
     $ yc iam service-account create --name function-sa
