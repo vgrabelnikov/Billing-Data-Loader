@@ -1,5 +1,5 @@
 # Billing-Data-Loader
-Serverless Function to load Yandex.Cloud billing data to ClickHouse
+Serverless Function for loading Yandex.Cloud billing data to ClickHouse
 
 # Prerequisites
 Ask Yandex.Cloud support to export your billing data to S3 bucket of your choice
