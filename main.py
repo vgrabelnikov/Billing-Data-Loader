@@ -1,3 +1,5 @@
+from typing import List
+
 import requests
 import pandas as pd
 import boto3
@@ -17,7 +19,31 @@ CERT = './CA.pem'
 BUCKET = os.environ['STORAGE_BUCKET']
 FOLDER = os.environ['STORAGE_FOLDER']
 TABLE = os.environ['CH_TABLE']
-
+columns = [
+            'billing_account_id',
+            'billing_account_name',
+            'cloud_id',
+            'cloud_name',
+            'folder_id',
+            'folder_name',
+            'service_id',
+            'service_name',
+            'sku_id',
+            'sku_name',
+            'date',
+            'currency',
+            'pricing_quantity',
+            'pricing_unit',
+            'cost',
+            'credit',
+            'monetary_grant_credit',
+            'volume_incentive_credit',
+            'cud_credit',
+            'misc_credit',
+            'locale',
+            'updated_at',
+            'exported_at'
+]
 
 def request():
     url = (CH_HOST + '&query={query}').format(
@@ -59,40 +85,66 @@ def upload(table, content, host=CH_HOST):
 
 # Shape Data
 def shape_df(tmp_df):
-    tmp_df["date"] = pd.to_datetime(tmp_df["date"]).dt.round('D')
+
+    shaped_df = pd.DataFrame(columns=columns)
+    for col in columns:
+        try:
+            shaped_df[col]=tmp_df[col]
+        except KeyError as cerr:
+            shaped_df[col] = ""
+
+    shaped_df["date"] = pd.to_datetime(shaped_df["date"]).dt.round('D')
     #tmp_df["exported_at"] = tmp_df["exported_at"].dt.round('s')
-    tmp_df["pricing_quantity"]=tmp_df["pricing_quantity"].round(10)
-    tmp_df["cost"]=tmp_df["cost"].round(10)
-    tmp_df["credit"]=tmp_df["credit"].round(10)
-    tmp_df["credit.committed_use_discount"]=tmp_df["credit.committed_use_discount"].round(10)
-    tmp_df["credit.grant"]=tmp_df["credit.grant"].round(10)
-    tmp_df["credit.volume_discount"]=tmp_df["credit.volume_discount"].round(10)
-    tmp_df["credit.misc"]=tmp_df["credit.misc"].round(10)
-    return tmp_df
+
+    decimal_columns: List[str] = [
+        'pricing_quantity',
+        'cost',
+        'credit',
+        'monetary_grant_credit',
+        'volume_incentive_credit',
+        'cud_credit',
+        'misc_credit'
+    ]
+
+    for col in decimal_columns:
+            shaped_df[col] = pd.to_numeric(shaped_df[col])
+            shaped_df[col] = shaped_df[col].round(10)
+
+    # tmp_df["pricing_quantity"]=tmp_df["pricing_quantity"].round(10)
+    # tmp_df["cost"]=tmp_df["cost"].round(10)
+    # tmp_df["credit"]=tmp_df["credit"].round(10)
+    # tmp_df["credit.committed_use_discount"]=tmp_df["credit.committed_use_discount"].round(10)
+    # tmp_df["credit.grant"]=tmp_df["credit.grant"].round(10)
+    # tmp_df["credit.volume_discount"]=tmp_df["credit.volume_discount"].round(10)
+    # tmp_df["credit.misc"]=tmp_df["credit.misc"].round(10)
+    return shaped_df
 
 def handler(event, context):
     q = '''
     CREATE TABLE IF NOT EXISTS ''' + TABLE+'''
     (
-        billing_account_id	String,
-        cloud_id String,	
-        currency String,	
-        service_id	String,
-        service_name String,	
-        sku_id	String,
-        sku_name String,	
-        date date,	
-        pricing_quantity decimal(25,10),	
-        cost	decimal(25,10),
-        credit	decimal(25,10),
-        credit_committed_use_discount decimal(25,10),	
-        credit_grant decimal(25,10),	
-        credit_volume_discount	decimal(25,10),
-        credit_misc decimal(25,10),	
-        created_at	int,
-        locale String,	
+        billing_account_id  String,
+        billing_account_name   String,
+        cloud_id String,
+        cloud_name String, 
         folder_id String,
-        folder_name	String,
+        folder_name    String,
+        service_id String,
+        service_name String,   
+        sku_id String,
+        sku_name String,   
+        date date, 
+        currency String,   
+        pricing_quantity decimal(25,10),   
+        pricing_unit String,
+        cost   decimal(25,10),
+        credit decimal(25,10),
+        monetary_grant_credit  decimal(25,10),
+        volume_incentive_credit  decimal(25,10),
+        cud_credit  decimal(25,10),
+        misc_credit  decimal(25,10),
+        locale  String,
+        updated_at  String,
         exported_at String
     )
     ENGINE = ReplicatedMergeTree('/clickhouse/tables/{shard}/''' + TABLE+'''', '{replica}') 
@@ -108,25 +160,25 @@ def handler(event, context):
         start_key = get_clickhouse_data(q).rstrip()
     except ValueError:
         start_key = '20180102.csv'
-
+   # start_key = '20200501.csv'
     session = boto3.session.Session()
     s3 = session.client(
         service_name='s3',
         endpoint_url='https://storage.yandexcloud.net'
     )
 
-    kwargs = {"Bucket": BUCKET, "Prefix" : FOLDER, "MaxKeys" : 100, "StartAfter" : FOLDER + '/' + start_key}
+    kwargs = {"Bucket": BUCKET, "Prefix" : FOLDER, "MaxKeys" : 10, "StartAfter" : FOLDER + '/' + start_key}
     continuation_token = None
     bck_cnt=0
     while True:
         if continuation_token:
             kwargs['ContinuationToken'] = continuation_token
         obj_list = s3.list_objects_v2(**kwargs)
-        try:
-            for key in obj_list['Contents']:
+        for key in obj_list['Contents']:
+            try:
                 get_object_response = s3.get_object(Bucket=BUCKET, Key=key['Key'])
                 df = pd.read_csv(StringIO(get_object_response['Body'].read().decode('utf-8')))
-                shape_df(df)
+                df = shape_df(df)
                 for part_dt in df["date"].unique():
                     q = '''ALTER TABLE ''' + TABLE + ''' DROP PARTITION ''' + pd.to_datetime(part_dt).strftime("'%Y-%m-%d'")
                     get_clickhouse_data(q)
@@ -135,8 +187,11 @@ def handler(event, context):
                     df.to_csv(index=False, sep='\t'))
                 print('object '+ key['Key'] + ' uploaded' )
                 bck_cnt = bck_cnt + 1
-        except KeyError:
-            print ('No objects found in Bucket ' + BUCKET + ' with prefix ' + FOLDER)
+            except KeyError as err:
+                print ('object '+ key['Key'] + ' error: ' + str(err))
+                #print ('No objects found in Bucket ' + BUCKET + ' with prefix ' + FOLDER)
+            except ValueError as err:
+                print ('object '+ key['Key'] + ' error: ' + str(err))
         if not obj_list.get('IsTruncated'):  # At the end of the list?
             break
         continuation_token = obj_list.get('NextContinuationToken')
@@ -146,4 +201,4 @@ def handler(event, context):
         'isBase64Encoded': False,
     }
 
-#handler('','')
+handler('','')
