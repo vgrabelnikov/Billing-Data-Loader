@@ -1,5 +1,5 @@
 from typing import List
-
+import json
 import requests
 import pandas as pd
 import boto3
@@ -110,57 +110,64 @@ def shape_df(tmp_df):
             shaped_df[col] = pd.to_numeric(shaped_df[col])
             shaped_df[col] = shaped_df[col].round(10)
 
-    # tmp_df["pricing_quantity"]=tmp_df["pricing_quantity"].round(10)
-    # tmp_df["cost"]=tmp_df["cost"].round(10)
-    # tmp_df["credit"]=tmp_df["credit"].round(10)
-    # tmp_df["credit.committed_use_discount"]=tmp_df["credit.committed_use_discount"].round(10)
-    # tmp_df["credit.grant"]=tmp_df["credit.grant"].round(10)
-    # tmp_df["credit.volume_discount"]=tmp_df["credit.volume_discount"].round(10)
-    # tmp_df["credit.misc"]=tmp_df["credit.misc"].round(10)
     return shaped_df
 
-def handler(event, context):
+def init(drop=False):
+
+    if (drop):
+        q='''drop table if exists '''  + TABLE
+        get_clickhouse_data(q)
+
     q = '''
-    CREATE TABLE IF NOT EXISTS ''' + TABLE+'''
-    (
-        billing_account_id  String,
-        billing_account_name   String,
-        cloud_id String,
-        cloud_name String, 
-        folder_id String,
-        folder_name    String,
-        service_id String,
-        service_name String,   
-        sku_id String,
-        sku_name String,   
-        date date, 
-        currency String,   
-        pricing_quantity decimal(25,10),   
-        pricing_unit String,
-        cost   decimal(25,10),
-        credit decimal(25,10),
-        monetary_grant_credit  decimal(25,10),
-        volume_incentive_credit  decimal(25,10),
-        cud_credit  decimal(25,10),
-        misc_credit  decimal(25,10),
-        locale  String,
-        updated_at  String,
-        exported_at String
-    )
-    ENGINE = ReplicatedMergeTree('/clickhouse/tables/{shard}/''' + TABLE+'''', '{replica}') 
-    PARTITION BY date 
-    ORDER BY (date, sku_id) 
-    '''
+        CREATE TABLE IF NOT EXISTS ''' + TABLE + '''
+        (
+            billing_account_id  String,
+            billing_account_name   String,
+            cloud_id String,
+            cloud_name String, 
+            folder_id String,
+            folder_name    String,
+            service_id String,
+            service_name String,   
+            sku_id String,
+            sku_name String,   
+            date date, 
+            currency String,   
+            pricing_quantity decimal(25,10),   
+            pricing_unit String,
+            cost   decimal(25,10),
+            credit decimal(25,10),
+            monetary_grant_credit  decimal(25,10),
+            volume_incentive_credit  decimal(25,10),
+            cud_credit  decimal(25,10),
+            misc_credit  decimal(25,10),
+            locale  String,
+            updated_at  String,
+            exported_at String
+        )
+        ENGINE = ReplicatedMergeTree('/clickhouse/tables/{shard}/''' + TABLE + '''', '{replica}') 
+        PARTITION BY date 
+        ORDER BY (date, sku_id) 
+        '''
     get_clickhouse_data(q)
 
-    q = '''select concat(replace(toString(
-                        subtractDays(COALESCE(maxOrNull(date), toDate('2018-01-03')),2)
-                                         ),'-',''),'.csv') from ''' + TABLE
-    try:
-        start_key = get_clickhouse_data(q).rstrip()
-    except ValueError:
-        start_key = '20180102.csv'
-   # start_key = '20200501.csv'
+def clear_part(part_dt):
+    q = '''ALTER TABLE ''' + TABLE + ''' DROP PARTITION ''' + pd.to_datetime(part_dt).strftime("'%Y-%m-%d'")
+    get_clickhouse_data(q)
+
+
+def reload(event, context):
+
+    init(True)
+
+    # q = '''select concat(replace(toString(
+    #                     subtractDays(COALESCE(maxOrNull(date), toDate('2018-01-03')),2)
+    #                                      ),'-',''),'.csv') from ''' + TABLE
+    # try:
+    #     start_key = get_clickhouse_data(q).rstrip()
+    # except ValueError:
+    #     start_key = '20180102.csv'
+    start_key = '20190101.csv'
     session = boto3.session.Session()
     s3 = session.client(
         service_name='s3',
@@ -180,8 +187,7 @@ def handler(event, context):
                 df = pd.read_csv(StringIO(get_object_response['Body'].read().decode('utf-8')))
                 df = shape_df(df)
                 for part_dt in df["date"].unique():
-                    q = '''ALTER TABLE ''' + TABLE + ''' DROP PARTITION ''' + pd.to_datetime(part_dt).strftime("'%Y-%m-%d'")
-                    get_clickhouse_data(q)
+                   clear_part(part_dt)
                 upload(
                     TABLE,
                     df.to_csv(index=False, sep='\t'))
@@ -201,4 +207,80 @@ def handler(event, context):
         'isBase64Encoded': False,
     }
 
-handler('','')
+def increment(event, context):
+
+    init(False)
+    session = boto3.session.Session()
+    s3 = session.client(
+        service_name='s3',
+        endpoint_url='https://storage.yandexcloud.net'
+    )
+
+    for record in event['messages']:
+        cur_bucket = record['details']['bucket_id']
+        cur_object = record['details']['object_id']
+
+        get_object_response = s3.get_object(Bucket=cur_bucket, Key=cur_object)
+        df = pd.read_csv(StringIO(get_object_response['Body'].read().decode('utf-8')))
+        df = shape_df(df)
+        for part_dt in df["date"].unique():
+            clear_part(part_dt)
+        upload(
+            TABLE,
+            df.to_csv(index=False, sep='\t'))
+        print('object ' + cur_object + ' uploaded')
+
+    return {
+        'statusCode': 200,
+      #  'body': str(bck_cnt) + ' objects loaded',
+        'isBase64Encoded': False,
+    }
+def handler(event, context):
+
+    try:
+        method = event['queryStringParameters']['method']
+    except KeyError as err:
+        method = ''
+
+    if method == 'reload':
+        return reload(event, context)
+
+    try:
+        cur_bucket = event['messages'][0]['details']['bucket_id']
+        cur_object = event['messages'][0]['details']['object_id']
+    except KeyError as err:
+        print ("Wrong function call")
+        return {
+            'statusCode': 400,
+            'body': 'Wrong function call - either pass method=reload as a parameter or use s3 trigger',
+            'isBase64Encoded': False,
+        }
+
+    if (cur_bucket != '' and cur_object != ''):
+        return increment(event, context)
+
+
+#reload('','')
+# handler(json.loads("""{
+#   "messages": [
+#     {
+#       "event_metadata": {
+#         "event_id": "bb1dd06d-a82c-49b4-af98-d8e0c5a1d8f0",
+#         "event_type": "yandex.cloud.events.storage.ObjectDelete",
+#         "created_at": "2019-12-19T14:17:47.847365Z",
+#         "tracing_context": {
+#           "trace_id": "dd52ace79c62892f",
+#           "span_id": "",
+#           "parent_span_id": ""
+#         },
+#         "cloud_id": "b1gvlrnlei4l5idm9cbj",
+#         "folder_id": "b1g88tflru0ek1omtsu0"
+#       },
+#       "details": {
+#         "bucket_id": "archbilling",
+#         "object_id": "yc-billing-export/20200910.csv"
+#       }
+#     }
+#   ]
+# }
+# """), '')

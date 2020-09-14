@@ -11,7 +11,7 @@ Also you need to have Service Account and access keys to access Object Storage (
     $ yc iam service-account create --name function-sa
     $ yc iam access-key create --service-account-name function-sa
     $ yc resource-manager folder add-access-binding <Folder-Name> \
-    --subject serviceAccount:<ServiceAccount-ID> --role editor
+    --subject serviceAccount:<ServiceAccount-ID> --role serverless.functions.invoker
 
 ## Create ClickHouse database
 
@@ -48,22 +48,23 @@ Used environment variables (inside deploy.sh):
 * `AWS_ACCESS_KEY_ID` – AWS Access Key
 * `AWS_SECRET_ACCESS_KEY` – Aws Access Secret Key
 
-## Test it
+## Initial load
 
-    $ yc serverless function invoke --name billfunc
-    {"statusCode": 200, "body": "2 objects loaded", "isBase64Encoded": false}
+    $ yc serverless function invoke billfunc -d '{"queryStringParameters": {"method": "reload"}}'
 
 ## Behaviour
-During first run function creates table `CH_TABLE` in ClickHouse and loads all data from CSV files.
+During first run with method = "reload" parameter function creates table `CH_TABLE` in ClickHouse and loads all data from CSV files.
 
-After first run function calculates maximum date in `CH_TABLE`,
- subtracts 2 days and loads all csv files which are greater or equal than that date.
-    
-## Create Timer
+## Create S3 Trigger
 
-After deploying your function you can create trigger with timer:
-https://cloud.yandex.ru/docs/functions/quickstart/timer-quickstart
-
-For cron expression you can use this template (Trigger runs every 1 hour): 
-    
-    $ yc serverless trigger create timer billfunctrigger --description 'Billing-Data-Loader hourly timer' --cron-expression '0 * ? * * *'  --invoke-function-name billfunc --invoke-function-service-account-name function-sa    
+After deploying your function you should create trigger for object storage where you store your billing data:
+https://cloud.yandex.com/docs/functions/quickstart/os-trigger-quickstart
+  
+    $ yc serverless trigger create object-storage billfuncs3trigger \
+        --description 'Billing-Data-Loader s3 trigger' \
+        --invoke-function-name billfunc \
+        --invoke-function-service-account-name function-sa  \
+        --bucket-id string \
+        --prefix yc-billing-export \
+        --suffix csv \
+        --events 'create-object','update-object'    
