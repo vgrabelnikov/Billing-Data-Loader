@@ -18,15 +18,20 @@ Also you need to have Service Account and access keys to access Object Storage (
 Before we start deploying, we need to create ClickHouse database
 and obtain it's connection parameters. Easiest way is to use web-console.
 
-    $ yc managed-clickhouse cluster create  --name billingserver --environment=production  \
-    --network-name vsgrabnet --clickhouse-resource-preset s2.micro \
-    --host type=clickhouse,zone-id=ru-central1-c,assign-public-ip=true,subnet-id=YYYYYY \
-    --clickhouse-disk-size 20 --clickhouse-disk-type network-ssd \
-    --user name=user1,password=XXXX --database name=db1
+    $ yc managed-clickhouse cluster create --name billingserver --environment=production  \
+        --network-name VPC_NAME --clickhouse-resource-preset s2.small \
+        --host type=clickhouse,zone-id=ru-central1-c,assign-public-ip=true,subnet-id=SUBNET_C_ID \
+        --host type=clickhouse,zone-id=ru-central1-a,assign-public-ip=true,subnet-id=SUBNET_A_ID \
+        --host type=zookeeper,zone-id=ru-central1-c,subnet-id=SUBNET_C_ID \
+        --host type=zookeeper,zone-id=ru-central1-b,subnet-id=SUBNET_B_ID \
+        --host type=zookeeper,zone-id=ru-central1-a,subnet-id=SUBNET_A_ID \
+        --clickhouse-disk-size 100 --clickhouse-disk-type network-ssd \
+        --user name=user1,password=pass@word12 --database name=db1 --serverless-access
+        
+    $ yc clickhouse user grant-permission user1 --cluster-name billingserver --database db1
 
 **Don't forget**:
-* make your database available using public IP address if you are using web-console (assign-public-ip=true flag in CLI)
-* use strong passwords.
+* use strong passwords
 
 
 ## Deploy function
@@ -68,3 +73,16 @@ https://cloud.yandex.com/docs/functions/quickstart/os-trigger-quickstart
         --prefix yc-billing-export \
         --suffix csv \
         --events 'create-object','update-object'    
+
+## Several Clouds
+If you have several clouds - you can combine billing data between them inside same cluster. 
+For each billing account use separate target tables. You can combine them with such view:
+
+    create view db1.bill_all on cluster '{cluster}'
+    as
+    SELECT billing_account_id, billing_account_name, cloud_id, cloud_name, folder_id, folder_name, service_id, service_name, sku_id, sku_name, `date`, currency, pricing_quantity, pricing_unit, cost, credit, monetary_grant_credit, volume_incentive_credit, cud_credit, misc_credit, locale, updated_at, exported_at
+    from db1.billing ba 
+    union all
+    SELECT billing_account_id, billing_account_name, cloud_id, cloud_name, folder_id, folder_name, service_id, service_name, sku_id, sku_name, `date`, currency, pricing_quantity, pricing_unit, cost, credit, monetary_grant_credit, volume_incentive_credit, cud_credit, misc_credit, locale, updated_at, exported_at
+    from db1.billing1 ba1
+            

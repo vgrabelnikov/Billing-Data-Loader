@@ -119,7 +119,7 @@ def init(drop=False):
         get_clickhouse_data(q)
 
     q = '''
-        CREATE TABLE IF NOT EXISTS ''' + TABLE + '''
+        CREATE TABLE IF NOT EXISTS ''' + TABLE + ''' on cluster '{cluster}'
         (
             billing_account_id  String,
             billing_account_name   String,
@@ -258,6 +258,12 @@ def handler(event, context):
 
     if (cur_bucket != '' and cur_object != ''):
         return increment(event, context)
+    else:
+        return {
+            'statusCode': 400,
+            'body': 'Wrong function call - either pass method=reload as a parameter or use s3 trigger',
+            'isBase64Encoded': False,
+        }
 
 
 #reload('','')

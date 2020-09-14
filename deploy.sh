@@ -15,5 +15,5 @@ yc serverless function version create       \
      --environment CH_HOST=hostfqdn \
      --environment CH_DB=db1 \
      --environment CH_USER=chuser \
-     --environment CH_TABLE=billing_arch \
+     --environment CH_TABLE=billing \
      --environment STORAGE_FOLDER=yc-billing-export
