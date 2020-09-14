@@ -74,9 +74,9 @@ https://cloud.yandex.com/docs/functions/quickstart/os-trigger-quickstart
         --suffix csv \
         --events 'create-object','update-object'    
 
-## Several Clouds
-If you have several clouds - you can combine billing data between them inside same cluster. 
-For each billing account use separate target tables. You can combine them with such view:
+## Several Billing Accounts
+If you have several clouds inside several billing accounts - you can combine billing data between them inside same ClickHouse cluster. 
+For each billing account use separate function instance and separate target table. You can combine them with such view:
 
     create view db1.bill_all on cluster '{cluster}'
     as
