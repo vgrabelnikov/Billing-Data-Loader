@@ -32,7 +32,7 @@ and obtain it's connection parameters. Easiest way is to use web-console.
         --host type=zookeeper,zone-id=ru-central1-b,subnet-id=SUBNET_B_ID \
         --host type=zookeeper,zone-id=ru-central1-a,subnet-id=SUBNET_A_ID \
         --clickhouse-disk-size 100 --clickhouse-disk-type network-ssd \
-        --user name=user1,password=pass@word12 --database name=db1 --serverless-access
+        --user name=user1,password=pass@word12 --database name=db1 --serverless-access --datalens-access
         
     $ yc clickhouse user grant-permission user1 --cluster-name billingserver --database db1
 
