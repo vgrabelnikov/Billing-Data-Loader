@@ -13,6 +13,12 @@ Also you need to have Service Account and access keys to access Object Storage (
     $ yc resource-manager folder add-access-binding <Folder-Name> \
     --subject serviceAccount:<ServiceAccount-ID> --role serverless.functions.invoker
 
+Add read ACL for your service account
+
+    $ aws --endpoint-url=https://storage.yandexcloud.net s3api put-bucket-acl --bucket BUCKETNAME --grant-read id=SERVICEACC_ID
+
+Same operation can be done manually via WEB UI
+
 ## Create ClickHouse database
 
 Before we start deploying, we need to create ClickHouse database
