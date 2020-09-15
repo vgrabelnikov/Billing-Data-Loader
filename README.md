@@ -59,7 +59,7 @@ Used environment variables (inside deploy.sh):
 * `AWS_ACCESS_KEY_ID` – AWS Access Key
 * `AWS_SECRET_ACCESS_KEY` – Aws Access Secret Key
 
-## Initial load
+## Initial load and full reload
 
     $ yc serverless function invoke billfunc -d '{"queryStringParameters": {"method": "reload"}}'
 
