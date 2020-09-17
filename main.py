@@ -174,7 +174,7 @@ def reload(event, context):
         endpoint_url='https://storage.yandexcloud.net'
     )
 
-    kwargs = {"Bucket": BUCKET, "Prefix" : FOLDER, "MaxKeys" : 10, "StartAfter" : FOLDER + '/' + start_key}
+    kwargs = {"Bucket": BUCKET, "Prefix" : FOLDER, "MaxKeys" : 100, "StartAfter" : FOLDER + '/' + start_key}
     continuation_token = None
     bck_cnt=0
     while True:
