@@ -42,7 +42,8 @@ columns = [
             'misc_credit',
             'locale',
             'updated_at',
-            'exported_at'
+            'exported_at',
+            'resource_id'
 ]
 
 def request():
@@ -143,7 +144,8 @@ def init(drop=False):
             misc_credit  decimal(25,10),
             locale  String,
             updated_at  String,
-            exported_at String
+            exported_at String,
+            resource_id String
         )
         ENGINE = ReplicatedMergeTree('/clickhouse/tables/{shard}/''' + TABLE + '''', '{replica}') 
         PARTITION BY date 
