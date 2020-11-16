@@ -4,7 +4,7 @@ yc serverless function version create       \
     --function-name billfunc                    \
     --runtime python37-preview                      \
     --entrypoint main.handler               \
-    --memory 128M                           \
+    --memory 512M                           \
     --execution-timeout 600s                  \
     --package-bucket-name vsgrab-dev         \
     --package-object-name dist.zip          \
