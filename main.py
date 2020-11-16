@@ -26,6 +26,7 @@ columns = [
             'cloud_name',
             'folder_id',
             'folder_name',
+            'resource_id',
             'service_id',
             'service_name',
             'sku_id',
@@ -42,8 +43,7 @@ columns = [
             'misc_credit',
             'locale',
             'updated_at',
-            'exported_at',
-            'resource_id'
+            'exported_at'
 ]
 
 def request():
@@ -116,7 +116,7 @@ def shape_df(tmp_df):
 def init(drop=False):
 
     if (drop):
-        q='''drop table if exists '''  + TABLE
+        q='''drop table if exists '''  + TABLE + ''' on cluster '{cluster}';'''
         get_clickhouse_data(q)
 
     q = '''
@@ -126,6 +126,7 @@ def init(drop=False):
             billing_account_name   String,
             cloud_id String,
             cloud_name String, 
+            resource_id String,
             folder_id String,
             folder_name    String,
             service_id String,
@@ -144,8 +145,7 @@ def init(drop=False):
             misc_credit  decimal(25,10),
             locale  String,
             updated_at  String,
-            exported_at String,
-            resource_id String
+            exported_at String
         )
         ENGINE = ReplicatedMergeTree('/clickhouse/tables/{shard}/''' + TABLE + '''', '{replica}') 
         PARTITION BY date 
@@ -186,7 +186,7 @@ def reload(event, context):
         for key in obj_list['Contents']:
             try:
                 get_object_response = s3.get_object(Bucket=BUCKET, Key=key['Key'])
-                df = pd.read_csv(StringIO(get_object_response['Body'].read().decode('utf-8')))
+                df = pd.read_csv(StringIO(get_object_response['Body'].read().decode('utf-8')), usecols=columns)
                 df = shape_df(df)
                 for part_dt in df["date"].unique():
                    clear_part(part_dt)
@@ -268,7 +268,7 @@ def handler(event, context):
         }
 
 
-#reload('','')
+reload('','')
 # handler(json.loads("""{
 #   "messages": [
 #     {
@@ -286,7 +286,7 @@ def handler(event, context):
 #       },
 #       "details": {
 #         "bucket_id": "archbilling",
-#         "object_id": "yc-billing-export/20200910.csv"
+#         "object_id": "yc-billing-export/20201008.csv"
 #       }
 #     }
 #   ]
