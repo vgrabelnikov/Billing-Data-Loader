@@ -186,7 +186,7 @@ def reload(event, context):
         for key in obj_list['Contents']:
             try:
                 get_object_response = s3.get_object(Bucket=BUCKET, Key=key['Key'])
-                df = pd.read_csv(StringIO(get_object_response['Body'].read().decode('utf-8')), usecols=columns)
+                df = pd.read_csv(StringIO(get_object_response['Body'].read().decode('utf-8')), usecols= lambda x: x in columns)
                 df = shape_df(df)
                 for part_dt in df["date"].unique():
                    clear_part(part_dt)
@@ -223,7 +223,7 @@ def increment(event, context):
         cur_object = record['details']['object_id']
 
         get_object_response = s3.get_object(Bucket=cur_bucket, Key=cur_object)
-        df = pd.read_csv(StringIO(get_object_response['Body'].read().decode('utf-8')))
+        df = pd.read_csv(StringIO(get_object_response['Body'].read().decode('utf-8')), usecols= lambda x: x in columns)
         df = shape_df(df)
         for part_dt in df["date"].unique():
             clear_part(part_dt)
@@ -268,7 +268,7 @@ def handler(event, context):
         }
 
 
-reload('','')
+#reload('','')
 # handler(json.loads("""{
 #   "messages": [
 #     {
@@ -286,7 +286,7 @@ reload('','')
 #       },
 #       "details": {
 #         "bucket_id": "archbilling",
-#         "object_id": "yc-billing-export/20201008.csv"
+#         "object_id": "yc-billing-export-with-resources/20200616.csv"
 #       }
 #     }
 #   ]
