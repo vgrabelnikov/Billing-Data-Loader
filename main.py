@@ -271,7 +271,7 @@ def handler(event, context):
         }
 
 handler(json.loads("""{
-  "messages": [
+  "messages": [ 
     {
       "event_metadata": {
         "event_id": "bb1dd06d-a82c-49b4-af98-d8e0c5a1d8f0",
