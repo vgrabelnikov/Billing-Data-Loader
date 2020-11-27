@@ -1,10 +1,8 @@
-from main import *
+import main
+import json
+#main.reload('','')
 
-
-
-#reload('','')
-
-handler(json.loads("""{
+main.handler(json.loads("""{
   "messages": [
     {
       "event_metadata": {
@@ -21,7 +19,7 @@ handler(json.loads("""{
       },
       "details": {
         "bucket_id": "archbilling",
-        "object_id": "yc-billing-export-with-resources/20201110.csv"
+        "object_id": "yc-billing-export-with-resources/20201126.csv"
       }
     }
   ]
